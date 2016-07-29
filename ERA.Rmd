@@ -1,0 +1,98 @@
+---
+title: ''
+output: html_document
+---
+
+# Introduction
+The data include seasonal data for pitcher-seasons with at least 100 IP from 2002-2011 (the first decade for which we have batted-ball data). The variables included are ERA, G, GS, K%, BB%, HR/9, GB%, IFFB/FB, and FB%. We will run a regression to predict ERA for this sample.
+
+The Sabermetrics statistics presented in this exercise are:
+
+* ERA: Earned Run Average   
+* G: Games playes
+* GS: Games started
+* K_Pct: Strikout percentage
+* BB_Pct: Base on Balls percentage
+* HR_9: Home Runs
+* GB_Pct: Games Behind
+* IFFB_Per_FB
+* FB_Pct: Fly Balls Percentage
+
+The main point of this exercise is to illustrate how one could use R to process, manipulate, explore, visualize and model data in R!
+
+# Read the Data
+```{r}
+setwd("/home/hduser/Sabermetrics")
+data <- read.csv("ERA_Regression.csv", stringsAsFactors = F)
+```
+
+# Explore the Data
+```{r, results="asis"}
+library(xtable)
+library(knitr)
+#tab <- kable(summary(data$Team))
+# names(tab) <- c("Team", "Number of Games")
+# df <- data.frame(summary(data$Team))
+# names(df) <- "Number of Games")
+# Remove records in which Team is missing
+teamCol <- data$Team[data$Team != "- - -" ] 
+tabDF <- data.frame(table(teamCol))
+names(tabDF) <- c("Team", "Games")
+# Sort by Games
+tabDF <- tabDF[order(tabDF$"Games", decreasing = T),]
+# Exclude row names
+rownames(tabDF) <- NULL
+# Create xtable
+tab <- xtable(tabDF)
+# Print it
+print(tab, type="html")
+
+# Create a data frame of the statistics to summarize these metrics
+statisticsDF <- data[, -which(names(data) %in% c("X", "Season", "Name", "Team", "playerid"))]
+# Descriptive staistics of the metrics
+kable(summary(statisticsDF))
+
+# Another way to print the above table is using the pander package
+library(pander)
+pander(summary(statisticsDF))
+```
+
+```{r correlationMatrix, fig.width=10, fig.height=7}
+# Create a correlation plot between variables
+pairs(statisticsDF, col="blue", main="Correlation Plot")
+```
+
+```{r corrMatrix, fig.width=6, fig.height=7}
+# Create a correlation plot between variables
+library(corrplot)
+corr <- cor(statisticsDF)
+corrplot(corr, type = "upper")
+```
+
+From the figure above, there seem to be a strong correlation between ERA and K_Pct (strikeouts) and Homeruns. There seems also to be a relatively weak corelation between ERA and Games Started (GS) and Base on Balls percentage (BB_Pct).
+
+# Linear Regression
+```{r}
+# create a new variable in our data frame called relief. This variable should be equal to 1 is a pitcher made at least 5 releif appearances (i.e. G - GS >= 5). Otherwise, it should be equal to 0.
+data$relief <- ifelse(data$G - data$GS >= 5, 1, 0)
+
+# Model: ERA vs. relief. Simple linear regression
+fitlm <- with(data, lm(ERA ~ relief))
+# Extract the slope of the model
+round(summary(fitlm)$coef[2], 3)
+```
+
+The positive coefficient on relief indicates that relievers have higher ERAs than starters in this sample, on average.
+
+This contradicts the convential wisdom that relievers have lower ERAs than starters - which is backed up by data. It is important to remember that our sample only includes pitchers with at least 100 IP. That means that almost every pitcher in the sample started at least a few games. Since only the worst starters will pitch in relief, their ERAs will be higher. If we looked at *all* relievers (including ones with less than 100 IP), or looked at the same sample of pitchers in relief/starting, we would see that relievers have lower ERAs, on average.
+
+```{r, fig.width=8, fig.height=6}
+library(ggplot2)
+# Subset with G - GS > 5
+sub <- subset(data, G - GS > 5)
+# ERA vs G - GS
+ggplot(sub, aes(G - GS, ERA)) + 
+  geom_smooth(method="lm") + 
+  geom_point() + 
+  ggtitle("ERA vs G-GS")
+```

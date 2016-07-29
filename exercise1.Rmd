@@ -1,0 +1,45 @@
+---
+output: html_document
+---
+
+The data set looked at in this exercise was extracted from the Lahman Database using MySQL. The data includes the following Sabermetric statistics:
+
+* PA: Plate Appearance
+* OBP: On-Base Percentage
+* SLG: Slugging Average
+* OPS: On-Base Plus Slugging
+
+In addition, teamID, yearID and playerID were also extracted. Only 2014 season and players with 400 PA or more were extracted to be illustrated in this exercise. 
+
+For more information about the data, please check the [Lahman Database Documentation][id]
+
+[id]: http://seanlahman.com/files/database/readme2014.txt
+
+# Reading and Summarizing the Data 
+```{r}
+# Reading the data
+setwd("/home/hduser/Sabermetrics")
+OPS_2014 <- read.csv("PA.csv")
+# Summary statistics of the metrics (PA, OBP, SLG, OPS)
+summary(OPS_2014[, !names(OPS_2014) %in% c("yearID", "playerID", "teamID")])
+# Create a dataframe of statistics using the which function to exclude playerID, yearID and teamID
+OPS_2014_Stats <- OPS_2014[,-which(names(OPS_2014) %in% c("playerID", "yearID", "teamID"))]
+# Check the new data frame 
+head(OPS_2014_Stats)
+# Again check the summary statistics
+summary(OPS_2014_Stats)
+
+# Yet a different way to keep the Sabermetric Statistics using the subset function
+OPS_2014_Statistics <- subset(OPS_2014, select = c("PA", "OBP", "SLG", "OPS"))
+head(OPS_2014_Statistics)
+```
+
+# Ploting the Distribution of OPS
+```{r, fig.width=10, fig.height=6}
+library(ggplot2)
+p <- ggplot(data=OPS_2014_Stats, aes(OPS))
+p + geom_histogram(aes(y = ..density..), binwidth=0.02, fill="darkblue", colour="black") + 
+  geom_density(colour="red", lwd=1.2) +
+  ylab(" ") +
+  ggtitle("Distribution of On-Base Plus Slugging in 2014")
+```
